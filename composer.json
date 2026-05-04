@@ -1,0 +1,15 @@
+{
+    "name": "bari/layout",
+    "description": "Plain PHP PDF label generator",
+    "license": "proprietary",
+    "type": "project",
+    "require": {
+        "php": "^8.4",
+        "setasign/fpdf": "^1.8"
+    },
+    "autoload": {
+        "psr-4": {
+            "Layout\\": "src/"
+        }
+    }
+}
