@@ -32,6 +32,8 @@ $customWidthErrors = $fieldErrors($errors, 'custom_width');
 $customHeightErrors = $fieldErrors($errors, 'custom_height');
 $customSizeErrors = $fieldErrors($errors, 'custom_size');
 $imageDirectoryErrors = $fieldErrors($errors, 'image_directory');
+$horizontalGapErrors = $fieldErrors($errors, 'horizontal_gap');
+$verticalGapErrors = $fieldErrors($errors, 'vertical_gap');
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -64,6 +66,10 @@ $imageDirectoryErrors = $fieldErrors($errors, 'image_directory');
 
         * {
             box-sizing: border-box;
+        }
+
+        [hidden] {
+            display: none !important;
         }
 
         body {
@@ -144,6 +150,11 @@ $imageDirectoryErrors = $fieldErrors($errors, 'image_directory');
             display: grid;
             gap: var(--space-4);
             grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .field-group {
+            display: grid;
+            gap: var(--space-4);
         }
 
         .field label {
@@ -235,7 +246,12 @@ $imageDirectoryErrors = $fieldErrors($errors, 'image_directory');
                 <form method="post" action="<?= $escape($formAction) ?>">
                     <div class="field <?= $paperSizeErrors !== [] ? 'field--error' : '' ?>">
                         <label for="paper_size">Paper size</label>
-                        <select id="paper_size" name="paper_size" aria-describedby="paper-size-hint<?= $paperSizeErrors !== [] ? ' paper-size-error' : '' ?>">
+                        <select
+                            id="paper_size"
+                            name="paper_size"
+                            data-custom-paper-size="CUSTOM"
+                            aria-describedby="paper-size-hint<?= $paperSizeErrors !== [] ? ' paper-size-error' : '' ?>"
+                        >
                             <?php foreach ($paperSizes as $value => $label) : ?>
                                 <option value="<?= $escape((string) $value) ?>" <?= $values['paper_size'] === (string) $value ? 'selected' : '' ?>><?= $escape((string) $label) ?></option>
                             <?php endforeach; ?>
@@ -250,59 +266,107 @@ $imageDirectoryErrors = $fieldErrors($errors, 'image_directory');
                         <?php endif; ?>
                     </div>
 
+                    <div class="field-group" id="custom-paper-size-fields">
+                        <div class="field-grid">
+                            <div class="field <?= $customWidthErrors !== [] ? 'field--error' : '' ?>">
+                                <label for="custom_width">Custom width (cm)</label>
+                                <input
+                                    id="custom_width"
+                                    name="custom_width"
+                                    type="number"
+                                    value="<?= $escape((string) $values['custom_width']) ?>"
+                                    inputmode="decimal"
+                                    min="0.01"
+                                    step="0.01"
+                                    aria-describedby="custom-width-hint<?= $customWidthErrors !== [] ? ' custom-width-error' : '' ?>"
+                                >
+                                <p class="field__hint" id="custom-width-hint">Used only for Custom size. Enter the paper width in centimeters.</p>
+                                <?php if ($customWidthErrors !== []) : ?>
+                                    <div class="field__error" id="custom-width-error">
+                                        <?php foreach ($customWidthErrors as $message) : ?>
+                                            <div><?= $escape($message) ?></div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+
+                            <div class="field <?= $customHeightErrors !== [] ? 'field--error' : '' ?>">
+                                <label for="custom_height">Custom height (cm)</label>
+                                <input
+                                    id="custom_height"
+                                    name="custom_height"
+                                    type="number"
+                                    value="<?= $escape((string) $values['custom_height']) ?>"
+                                    inputmode="decimal"
+                                    min="0.01"
+                                    step="0.01"
+                                    aria-describedby="custom-height-hint<?= $customHeightErrors !== [] ? ' custom-height-error' : '' ?>"
+                                >
+                                <p class="field__hint" id="custom-height-hint">Used only for Custom size. Enter the paper height in centimeters.</p>
+                                <?php if ($customHeightErrors !== []) : ?>
+                                    <div class="field__error" id="custom-height-error">
+                                        <?php foreach ($customHeightErrors as $message) : ?>
+                                            <div><?= $escape($message) ?></div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+
+                        <?php if ($customSizeErrors !== []) : ?>
+                            <div class="field__error" id="custom-size-error">
+                                <?php foreach ($customSizeErrors as $message) : ?>
+                                    <div><?= $escape($message) ?></div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+
                     <div class="field-grid">
-                        <div class="field <?= $customWidthErrors !== [] ? 'field--error' : '' ?>">
-                            <label for="custom_width">Custom width (cm)</label>
+                        <div class="field <?= $horizontalGapErrors !== [] ? 'field--error' : '' ?>">
+                            <label for="horizontal_gap">Horizontal gap (cm)</label>
                             <input
-                                id="custom_width"
-                                name="custom_width"
+                                id="horizontal_gap"
+                                name="horizontal_gap"
                                 type="number"
-                                value="<?= $escape((string) $values['custom_width']) ?>"
+                                value="<?= $escape((string) ($values['horizontal_gap'] ?? '0')) ?>"
                                 inputmode="decimal"
-                                min="0.01"
+                                min="0"
                                 step="0.01"
-                                aria-describedby="custom-width-hint<?= $customWidthErrors !== [] ? ' custom-width-error' : '' ?>"
+                                aria-describedby="horizontal-gap-hint<?= $horizontalGapErrors !== [] ? ' horizontal-gap-error' : '' ?>"
                             >
-                            <p class="field__hint" id="custom-width-hint">Used only for Custom size. Enter the paper width in centimeters.</p>
-                            <?php if ($customWidthErrors !== []) : ?>
-                                <div class="field__error" id="custom-width-error">
-                                    <?php foreach ($customWidthErrors as $message) : ?>
+                            <p class="field__hint" id="horizontal-gap-hint">Set the spacing between label columns in centimeters.</p>
+                            <?php if ($horizontalGapErrors !== []) : ?>
+                                <div class="field__error" id="horizontal-gap-error">
+                                    <?php foreach ($horizontalGapErrors as $message) : ?>
                                         <div><?= $escape($message) ?></div>
                                     <?php endforeach; ?>
                                 </div>
                             <?php endif; ?>
                         </div>
 
-                        <div class="field <?= $customHeightErrors !== [] ? 'field--error' : '' ?>">
-                            <label for="custom_height">Custom height (cm)</label>
+                        <div class="field <?= $verticalGapErrors !== [] ? 'field--error' : '' ?>">
+                            <label for="vertical_gap">Vertical gap (cm)</label>
                             <input
-                                id="custom_height"
-                                name="custom_height"
+                                id="vertical_gap"
+                                name="vertical_gap"
                                 type="number"
-                                value="<?= $escape((string) $values['custom_height']) ?>"
+                                value="<?= $escape((string) ($values['vertical_gap'] ?? '0')) ?>"
                                 inputmode="decimal"
-                                min="0.01"
+                                min="0"
                                 step="0.01"
-                                aria-describedby="custom-height-hint<?= $customHeightErrors !== [] ? ' custom-height-error' : '' ?>"
+                                aria-describedby="vertical-gap-hint<?= $verticalGapErrors !== [] ? ' vertical-gap-error' : '' ?>"
                             >
-                            <p class="field__hint" id="custom-height-hint">Used only for Custom size. Enter the paper height in centimeters.</p>
-                            <?php if ($customHeightErrors !== []) : ?>
-                                <div class="field__error" id="custom-height-error">
-                                    <?php foreach ($customHeightErrors as $message) : ?>
+                            <p class="field__hint" id="vertical-gap-hint">Set the spacing between label rows in centimeters.</p>
+                            <?php if ($verticalGapErrors !== []) : ?>
+                                <div class="field__error" id="vertical-gap-error">
+                                    <?php foreach ($verticalGapErrors as $message) : ?>
                                         <div><?= $escape($message) ?></div>
                                     <?php endforeach; ?>
                                 </div>
                             <?php endif; ?>
                         </div>
                     </div>
-
-                    <?php if ($customSizeErrors !== []) : ?>
-                        <div class="field__error" id="custom-size-error">
-                            <?php foreach ($customSizeErrors as $message) : ?>
-                                <div><?= $escape($message) ?></div>
-                            <?php endforeach; ?>
-                        </div>
-                    <?php endif; ?>
 
                     <div class="field <?= $imageDirectoryErrors !== [] ? 'field--error' : '' ?>">
                         <label for="image_directory">Image directory path</label>
@@ -331,5 +395,30 @@ $imageDirectoryErrors = $fieldErrors($errors, 'image_directory');
             </div>
         </section>
     </main>
+    <script>
+        (function () {
+            const paperSizeField = document.getElementById('paper_size');
+            const customPaperSizeFields = document.getElementById('custom-paper-size-fields');
+            const customWidthField = document.getElementById('custom_width');
+            const customHeightField = document.getElementById('custom_height');
+
+            if (!paperSizeField || !customPaperSizeFields || !customWidthField || !customHeightField) {
+                return;
+            }
+
+            const customPaperSize = paperSizeField.getAttribute('data-custom-paper-size') || 'CUSTOM';
+
+            const syncCustomPaperSizeVisibility = function () {
+                const isCustomPaperSize = paperSizeField.value === customPaperSize;
+
+                customPaperSizeFields.hidden = !isCustomPaperSize;
+                customWidthField.required = isCustomPaperSize;
+                customHeightField.required = isCustomPaperSize;
+            };
+
+            syncCustomPaperSizeVisibility();
+            paperSizeField.addEventListener('change', syncCustomPaperSizeVisibility);
+        }());
+    </script>
 </body>
 </html>

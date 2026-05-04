@@ -38,39 +38,81 @@ $parseCustomDimension = static function (string $value, string $field, array &$e
     return $dimension;
 };
 
+$parseGapDimension = static function (string $value, string $field, array &$errors): ?float {
+    $value = trim($value);
+
+    if ($value === '') {
+        return 0.0;
+    }
+
+    if (!is_numeric($value)) {
+        $errors[$field][] = 'Enter a numeric value in centimeters.';
+        return null;
+    }
+
+    $gap = (float) $value;
+
+    if ($gap < 0) {
+        $errors[$field][] = 'Enter a value greater than or equal to zero.';
+        return null;
+    }
+
+    return $gap;
+};
+
+$formatCentimeters = static function (float $value): string {
+    return rtrim(rtrim(number_format($value, 2, '.', ''), '0'), '.');
+};
+
 $values = [
     'paper_size' => PaperSizes::default(),
     'custom_width' => '',
     'custom_height' => '',
     'image_directory' => 'Label Berlaku/',
+    'horizontal_gap' => '0',
+    'vertical_gap' => '0',
 ];
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
-    $minimumPaperWidth = 24.3;
-    $minimumPaperHeight = 18.3;
+    $baseMinimumPaperWidth = 24.3;
+    $baseMinimumPaperHeight = 18.3;
+    $horizontalGapCount = 3;
+    $verticalGapCount = 5;
 
     $old = [
         'paper_size' => (string) ($_POST['paper_size'] ?? ''),
         'custom_width' => trim((string) ($_POST['custom_width'] ?? '')),
         'custom_height' => trim((string) ($_POST['custom_height'] ?? '')),
         'image_directory' => trim((string) ($_POST['image_directory'] ?? '')),
+        'horizontal_gap' => trim((string) ($_POST['horizontal_gap'] ?? '')),
+        'vertical_gap' => trim((string) ($_POST['vertical_gap'] ?? '')),
     ];
 
     $values = $old;
 
     $paperSize = null;
     $downloadName = null;
+    $horizontalGap = $parseGapDimension($old['horizontal_gap'], 'horizontal_gap', $errors);
+    $verticalGap = $parseGapDimension($old['vertical_gap'], 'vertical_gap', $errors);
+
+    if ($horizontalGap === null || $verticalGap === null) {
+        $minimumPaperWidth = null;
+        $minimumPaperHeight = null;
+    } else {
+        $minimumPaperWidth = $baseMinimumPaperWidth + ($horizontalGapCount * $horizontalGap);
+        $minimumPaperHeight = $baseMinimumPaperHeight + ($verticalGapCount * $verticalGap);
+    }
 
     if (PaperSizes::isCustom($old['paper_size'])) {
         $customWidth = $parseCustomDimension($old['custom_width'], 'custom_width', $errors);
         $customHeight = $parseCustomDimension($old['custom_height'], 'custom_height', $errors);
 
-        if ($customWidth !== null && $customHeight !== null) {
+        if ($customWidth !== null && $customHeight !== null && $minimumPaperWidth !== null && $minimumPaperHeight !== null) {
             if ($customWidth < $minimumPaperWidth || $customHeight < $minimumPaperHeight) {
                 $errors['custom_size'][] = sprintf(
                     'Custom paper must be at least %s cm wide and %s cm high to fit the current label layout.',
-                    number_format($minimumPaperWidth, 1, '.', ''),
-                    number_format($minimumPaperHeight, 1, '.', '')
+                    $formatCentimeters($minimumPaperWidth),
+                    $formatCentimeters($minimumPaperHeight)
                 );
             } else {
                 $paperSize = [$customWidth, $customHeight];
@@ -106,7 +148,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 
     if ($errors === []) {
         $generator = new LabelPdfGenerator();
-        $generator->outputInline($imagePaths, $paperSize, $downloadName);
+        $generator->outputInline($imagePaths, $paperSize, $downloadName, $horizontalGap ?? 0.0, $verticalGap ?? 0.0);
         exit;
     }
 }
