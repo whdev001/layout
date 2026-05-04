@@ -15,7 +15,7 @@ $paperSizes = PaperSizes::options();
 $formAction = '';
 $pageTitle = 'PDF Generator';
 
-$parseCustomDimension = static function (string $value, string $field, array &$errors): ?float {
+$parsePositiveDimension = static function (string $value, string $field, array &$errors): ?float {
     $value = trim($value);
 
     if ($value === '') {
@@ -60,12 +60,59 @@ $parseGapDimension = static function (string $value, string $field, array &$erro
     return $gap;
 };
 
+$parseMarginDimension = static function (string $value, string $field, array &$errors): ?float {
+    $value = trim($value);
+
+    if ($value === '') {
+        $errors[$field][] = 'This value is required for custom margins.';
+        return null;
+    }
+
+    if (!is_numeric($value)) {
+        $errors[$field][] = 'Enter a numeric value in centimeters.';
+        return null;
+    }
+
+    $margin = (float) $value;
+
+    if ($margin < 0) {
+        $errors[$field][] = 'Enter a value greater than or equal to zero.';
+        return null;
+    }
+
+    return $margin;
+};
+
 $formatCentimeters = static function (float $value): string {
     return rtrim(rtrim(number_format($value, 2, '.', ''), '0'), '.');
 };
 
+$orientationMap = [
+    'landscape' => 'L',
+    'portrait' => 'P',
+];
+
+$marginPresetMap = [
+    'narrow' => ['top' => 0.1, 'right' => 0.1, 'bottom' => 0.1, 'left' => 0.1],
+    'normal' => ['top' => 0.3, 'right' => 0.1, 'bottom' => 0.0, 'left' => 0.2],
+    'centered' => ['top' => 0.3, 'right' => 0.1, 'bottom' => 0.0, 'left' => 0.2],
+    'custom' => null,
+];
+
+$presetPaperDimensions = [
+    'A4' => ['width' => 21.0, 'height' => 29.7],
+    'LETTER' => ['width' => 21.59, 'height' => 27.94],
+    'LEGAL' => ['width' => 21.59, 'height' => 35.56],
+];
+
 $values = [
     'paper_size' => PaperSizes::default(),
+    'orientation' => 'landscape',
+    'margin_preset' => 'normal',
+    'margin_top' => '',
+    'margin_right' => '',
+    'margin_bottom' => '',
+    'margin_left' => '',
     'custom_width' => '',
     'custom_height' => '',
     'image_directory' => 'Label Berlaku/',
@@ -74,13 +121,14 @@ $values = [
 ];
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
-    $baseMinimumPaperWidth = 24.3;
-    $baseMinimumPaperHeight = 18.3;
-    $horizontalGapCount = 3;
-    $verticalGapCount = 5;
-
     $old = [
-        'paper_size' => (string) ($_POST['paper_size'] ?? ''),
+        'paper_size' => (string) ($_POST['paper_size'] ?? PaperSizes::default()),
+        'orientation' => strtolower(trim((string) ($_POST['orientation'] ?? 'landscape'))),
+        'margin_preset' => strtolower(trim((string) ($_POST['margin_preset'] ?? 'normal'))),
+        'margin_top' => trim((string) ($_POST['margin_top'] ?? '')),
+        'margin_right' => trim((string) ($_POST['margin_right'] ?? '')),
+        'margin_bottom' => trim((string) ($_POST['margin_bottom'] ?? '')),
+        'margin_left' => trim((string) ($_POST['margin_left'] ?? '')),
         'custom_width' => trim((string) ($_POST['custom_width'] ?? '')),
         'custom_height' => trim((string) ($_POST['custom_height'] ?? '')),
         'image_directory' => trim((string) ($_POST['image_directory'] ?? '')),
@@ -90,34 +138,49 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 
     $values = $old;
 
+    $orientation = $orientationMap[$old['orientation']] ?? null;
     $paperSize = null;
     $downloadName = null;
+    $paperWidth = null;
+    $paperHeight = null;
+    $margins = null;
+
+    if ($orientation === null) {
+        $errors['orientation'][] = 'Choose portrait or landscape.';
+    }
+
     $horizontalGap = $parseGapDimension($old['horizontal_gap'], 'horizontal_gap', $errors);
     $verticalGap = $parseGapDimension($old['vertical_gap'], 'vertical_gap', $errors);
 
-    if ($horizontalGap === null || $verticalGap === null) {
-        $minimumPaperWidth = null;
-        $minimumPaperHeight = null;
+    if (!array_key_exists($old['margin_preset'], $marginPresetMap)) {
+        $errors['margin_preset'][] = 'Choose a supported margin preset.';
+    } elseif ($old['margin_preset'] === 'custom') {
+        $marginTop = $parseMarginDimension($old['margin_top'], 'margin_top', $errors);
+        $marginRight = $parseMarginDimension($old['margin_right'], 'margin_right', $errors);
+        $marginBottom = $parseMarginDimension($old['margin_bottom'], 'margin_bottom', $errors);
+        $marginLeft = $parseMarginDimension($old['margin_left'], 'margin_left', $errors);
+
+        if ($marginTop !== null && $marginRight !== null && $marginBottom !== null && $marginLeft !== null) {
+            $margins = [
+                'top' => $marginTop,
+                'right' => $marginRight,
+                'bottom' => $marginBottom,
+                'left' => $marginLeft,
+            ];
+        }
     } else {
-        $minimumPaperWidth = $baseMinimumPaperWidth + ($horizontalGapCount * $horizontalGap);
-        $minimumPaperHeight = $baseMinimumPaperHeight + ($verticalGapCount * $verticalGap);
+        $margins = $marginPresetMap[$old['margin_preset']];
     }
 
     if (PaperSizes::isCustom($old['paper_size'])) {
-        $customWidth = $parseCustomDimension($old['custom_width'], 'custom_width', $errors);
-        $customHeight = $parseCustomDimension($old['custom_height'], 'custom_height', $errors);
+        $customWidth = $parsePositiveDimension($old['custom_width'], 'custom_width', $errors);
+        $customHeight = $parsePositiveDimension($old['custom_height'], 'custom_height', $errors);
 
-        if ($customWidth !== null && $customHeight !== null && $minimumPaperWidth !== null && $minimumPaperHeight !== null) {
-            if ($customWidth < $minimumPaperWidth || $customHeight < $minimumPaperHeight) {
-                $errors['custom_size'][] = sprintf(
-                    'Custom paper must be at least %s cm wide and %s cm high to fit the current label layout.',
-                    $formatCentimeters($minimumPaperWidth),
-                    $formatCentimeters($minimumPaperHeight)
-                );
-            } else {
-                $paperSize = [$customWidth, $customHeight];
-                $downloadName = 'labels-custom.pdf';
-            }
+        if ($customWidth !== null && $customHeight !== null) {
+            $paperSize = [$customWidth, $customHeight];
+            $paperWidth = $customWidth;
+            $paperHeight = $customHeight;
+            $downloadName = 'labels-custom.pdf';
         }
     } else {
         $paperSize = PaperSizes::normalize($old['paper_size']);
@@ -125,7 +188,35 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         if ($paperSize === null) {
             $errors['paper_size'][] = 'Choose a supported paper size.';
         } else {
+            $paperSizeKey = strtoupper(trim($old['paper_size']));
+            $paperDimensions = $presetPaperDimensions[$paperSizeKey] ?? null;
+
+            if ($paperDimensions === null) {
+                $errors['paper_size'][] = 'Choose a supported paper size.';
+            } elseif ($orientation === 'L') {
+                $paperWidth = $paperDimensions['height'];
+                $paperHeight = $paperDimensions['width'];
+            } else {
+                $paperWidth = $paperDimensions['width'];
+                $paperHeight = $paperDimensions['height'];
+            }
+
             $downloadName = sprintf('labels-%s.pdf', strtolower($paperSize));
+        }
+    }
+
+    if ($paperWidth !== null && $paperHeight !== null && $margins !== null && $horizontalGap !== null && $verticalGap !== null) {
+        $gridWidth = (4 * 6.0) + (3 * $horizontalGap);
+        $gridHeight = (6 * 3.0) + (5 * $verticalGap);
+        $requiredWidth = $margins['left'] + $gridWidth + $margins['right'];
+        $requiredHeight = $margins['top'] + $gridHeight + $margins['bottom'];
+
+        if ($paperWidth < $requiredWidth || $paperHeight < $requiredHeight) {
+            $errors['form'][] = sprintf(
+                'The selected paper, orientation, margins, and gaps need at least %s cm × %s cm of page space for the current 4 × 6 label layout.',
+                $formatCentimeters($requiredWidth),
+                $formatCentimeters($requiredHeight)
+            );
         }
     }
 
@@ -148,7 +239,19 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 
     if ($errors === []) {
         $generator = new LabelPdfGenerator();
-        $generator->outputInline($imagePaths, $paperSize, $downloadName, $horizontalGap ?? 0.0, $verticalGap ?? 0.0);
+        $generator->outputInline(
+            $imagePaths,
+            $paperSize,
+            $downloadName,
+            $horizontalGap ?? 0.0,
+            $verticalGap ?? 0.0,
+            $orientation ?? 'L',
+            $old['margin_preset'],
+            $margins['top'] ?? null,
+            $margins['right'] ?? null,
+            $margins['bottom'] ?? null,
+            $margins['left'] ?? null
+        );
         exit;
     }
 }

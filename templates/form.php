@@ -28,12 +28,46 @@ if (! is_array($globalErrors)) {
 }
 
 $paperSizeErrors = $fieldErrors($errors, 'paper_size');
+$orientationErrors = $fieldErrors($errors, 'orientation');
+$marginPresetErrors = $fieldErrors($errors, 'margin_preset');
+$marginTopErrors = $fieldErrors($errors, 'margin_top');
+$marginRightErrors = $fieldErrors($errors, 'margin_right');
+$marginBottomErrors = $fieldErrors($errors, 'margin_bottom');
+$marginLeftErrors = $fieldErrors($errors, 'margin_left');
+$customMarginsErrors = $fieldErrors($errors, 'custom_margins');
 $customWidthErrors = $fieldErrors($errors, 'custom_width');
 $customHeightErrors = $fieldErrors($errors, 'custom_height');
 $customSizeErrors = $fieldErrors($errors, 'custom_size');
 $imageDirectoryErrors = $fieldErrors($errors, 'image_directory');
 $horizontalGapErrors = $fieldErrors($errors, 'horizontal_gap');
 $verticalGapErrors = $fieldErrors($errors, 'vertical_gap');
+
+$values = array_merge([
+    'paper_size' => '',
+    'orientation' => 'portrait',
+    'margin_preset' => 'normal',
+    'margin_top' => '',
+    'margin_right' => '',
+    'margin_bottom' => '',
+    'margin_left' => '',
+    'custom_width' => '',
+    'custom_height' => '',
+    'image_directory' => '',
+    'horizontal_gap' => '0',
+    'vertical_gap' => '0',
+], $values);
+
+$orientationOptions = [
+    'portrait' => 'Portrait',
+    'landscape' => 'Landscape',
+];
+
+$marginPresetOptions = [
+    'narrow' => 'Narrow',
+    'normal' => 'Normal',
+    'centered' => 'Centered',
+    'custom' => 'Custom',
+];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -155,6 +189,15 @@ $verticalGapErrors = $fieldErrors($errors, 'vertical_gap');
         .field-group {
             display: grid;
             gap: var(--space-4);
+        }
+
+        .field-subgroup {
+            display: grid;
+            gap: var(--space-4);
+            padding: var(--space-4);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-control);
+            background: #fcfcfa;
         }
 
         .field label {
@@ -323,6 +366,153 @@ $verticalGapErrors = $fieldErrors($errors, 'vertical_gap');
                     </div>
 
                     <div class="field-grid">
+                        <div class="field <?= $orientationErrors !== [] ? 'field--error' : '' ?>">
+                            <label for="orientation">Orientation</label>
+                            <select
+                                id="orientation"
+                                name="orientation"
+                                aria-describedby="orientation-hint<?= $orientationErrors !== [] ? ' orientation-error' : '' ?>"
+                            >
+                                <?php foreach ($orientationOptions as $value => $label) : ?>
+                                    <option value="<?= $escape($value) ?>" <?= $values['orientation'] === $value ? 'selected' : '' ?>><?= $escape($label) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <p class="field__hint" id="orientation-hint">Choose whether the generated page should be portrait or landscape.</p>
+                            <?php if ($orientationErrors !== []) : ?>
+                                <div class="field__error" id="orientation-error">
+                                    <?php foreach ($orientationErrors as $message) : ?>
+                                        <div><?= $escape($message) ?></div>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+
+                        <div class="field <?= $marginPresetErrors !== [] ? 'field--error' : '' ?>">
+                            <label for="margin_preset">Margin preset</label>
+                            <select
+                                id="margin_preset"
+                                name="margin_preset"
+                                data-custom-margin-preset="custom"
+                                aria-describedby="margin-preset-hint<?= $marginPresetErrors !== [] ? ' margin-preset-error' : '' ?>"
+                            >
+                                <?php foreach ($marginPresetOptions as $value => $label) : ?>
+                                    <option value="<?= $escape($value) ?>" <?= $values['margin_preset'] === $value ? 'selected' : '' ?>><?= $escape($label) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <p class="field__hint" id="margin-preset-hint">Pick a Word-style margin preset, or choose Custom to enter each side manually.</p>
+                            <?php if ($marginPresetErrors !== []) : ?>
+                                <div class="field__error" id="margin-preset-error">
+                                    <?php foreach ($marginPresetErrors as $message) : ?>
+                                        <div><?= $escape($message) ?></div>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+
+                    <div class="field-subgroup" id="custom-margin-fields">
+                        <div class="field-grid">
+                            <div class="field <?= $marginTopErrors !== [] ? 'field--error' : '' ?>">
+                                <label for="margin_top">Top margin (cm)</label>
+                                <input
+                                    id="margin_top"
+                                    name="margin_top"
+                                    type="number"
+                                    value="<?= $escape((string) $values['margin_top']) ?>"
+                                    inputmode="decimal"
+                                    min="0"
+                                    step="0.01"
+                                    aria-describedby="margin-top-hint<?= $marginTopErrors !== [] ? ' margin-top-error' : '' ?>"
+                                >
+                                <p class="field__hint" id="margin-top-hint">Used only for the Custom preset.</p>
+                                <?php if ($marginTopErrors !== []) : ?>
+                                    <div class="field__error" id="margin-top-error">
+                                        <?php foreach ($marginTopErrors as $message) : ?>
+                                            <div><?= $escape($message) ?></div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+
+                            <div class="field <?= $marginRightErrors !== [] ? 'field--error' : '' ?>">
+                                <label for="margin_right">Right margin (cm)</label>
+                                <input
+                                    id="margin_right"
+                                    name="margin_right"
+                                    type="number"
+                                    value="<?= $escape((string) $values['margin_right']) ?>"
+                                    inputmode="decimal"
+                                    min="0"
+                                    step="0.01"
+                                    aria-describedby="margin-right-hint<?= $marginRightErrors !== [] ? ' margin-right-error' : '' ?>"
+                                >
+                                <p class="field__hint" id="margin-right-hint">Used only for the Custom preset.</p>
+                                <?php if ($marginRightErrors !== []) : ?>
+                                    <div class="field__error" id="margin-right-error">
+                                        <?php foreach ($marginRightErrors as $message) : ?>
+                                            <div><?= $escape($message) ?></div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+
+                        <div class="field-grid">
+                            <div class="field <?= $marginBottomErrors !== [] ? 'field--error' : '' ?>">
+                                <label for="margin_bottom">Bottom margin (cm)</label>
+                                <input
+                                    id="margin_bottom"
+                                    name="margin_bottom"
+                                    type="number"
+                                    value="<?= $escape((string) $values['margin_bottom']) ?>"
+                                    inputmode="decimal"
+                                    min="0"
+                                    step="0.01"
+                                    aria-describedby="margin-bottom-hint<?= $marginBottomErrors !== [] ? ' margin-bottom-error' : '' ?>"
+                                >
+                                <p class="field__hint" id="margin-bottom-hint">Used only for the Custom preset.</p>
+                                <?php if ($marginBottomErrors !== []) : ?>
+                                    <div class="field__error" id="margin-bottom-error">
+                                        <?php foreach ($marginBottomErrors as $message) : ?>
+                                            <div><?= $escape($message) ?></div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+
+                            <div class="field <?= $marginLeftErrors !== [] ? 'field--error' : '' ?>">
+                                <label for="margin_left">Left margin (cm)</label>
+                                <input
+                                    id="margin_left"
+                                    name="margin_left"
+                                    type="number"
+                                    value="<?= $escape((string) $values['margin_left']) ?>"
+                                    inputmode="decimal"
+                                    min="0"
+                                    step="0.01"
+                                    aria-describedby="margin-left-hint<?= $marginLeftErrors !== [] ? ' margin-left-error' : '' ?>"
+                                >
+                                <p class="field__hint" id="margin-left-hint">Used only for the Custom preset.</p>
+                                <?php if ($marginLeftErrors !== []) : ?>
+                                    <div class="field__error" id="margin-left-error">
+                                        <?php foreach ($marginLeftErrors as $message) : ?>
+                                            <div><?= $escape($message) ?></div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+
+                        <?php if ($customMarginsErrors !== []) : ?>
+                            <div class="field__error" id="custom-margins-error">
+                                <?php foreach ($customMarginsErrors as $message) : ?>
+                                    <div><?= $escape($message) ?></div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+
+                    <div class="field-grid">
                         <div class="field <?= $horizontalGapErrors !== [] ? 'field--error' : '' ?>">
                             <label for="horizontal_gap">Horizontal gap (cm)</label>
                             <input
@@ -401,23 +591,40 @@ $verticalGapErrors = $fieldErrors($errors, 'vertical_gap');
             const customPaperSizeFields = document.getElementById('custom-paper-size-fields');
             const customWidthField = document.getElementById('custom_width');
             const customHeightField = document.getElementById('custom_height');
+            const marginPresetField = document.getElementById('margin_preset');
+            const customMarginFields = document.getElementById('custom-margin-fields');
 
-            if (!paperSizeField || !customPaperSizeFields || !customWidthField || !customHeightField) {
-                return;
+            if (paperSizeField && customPaperSizeFields && customWidthField && customHeightField) {
+                const customPaperSize = paperSizeField.getAttribute('data-custom-paper-size') || 'CUSTOM';
+
+                const syncCustomPaperSizeVisibility = function () {
+                    const isCustomPaperSize = paperSizeField.value === customPaperSize;
+
+                    customPaperSizeFields.hidden = !isCustomPaperSize;
+                    customWidthField.required = isCustomPaperSize;
+                    customHeightField.required = isCustomPaperSize;
+                };
+
+                syncCustomPaperSizeVisibility();
+                paperSizeField.addEventListener('change', syncCustomPaperSizeVisibility);
             }
 
-            const customPaperSize = paperSizeField.getAttribute('data-custom-paper-size') || 'CUSTOM';
+            if (marginPresetField && customMarginFields) {
+                const customMarginPreset = marginPresetField.getAttribute('data-custom-margin-preset') || 'custom';
+                const customMarginInputs = customMarginFields.querySelectorAll('input');
 
-            const syncCustomPaperSizeVisibility = function () {
-                const isCustomPaperSize = paperSizeField.value === customPaperSize;
+                const syncCustomMarginVisibility = function () {
+                    const isCustomMarginPreset = marginPresetField.value === customMarginPreset;
 
-                customPaperSizeFields.hidden = !isCustomPaperSize;
-                customWidthField.required = isCustomPaperSize;
-                customHeightField.required = isCustomPaperSize;
-            };
+                    customMarginFields.hidden = !isCustomMarginPreset;
+                    customMarginInputs.forEach(function (input) {
+                        input.required = isCustomMarginPreset;
+                    });
+                };
 
-            syncCustomPaperSizeVisibility();
-            paperSizeField.addEventListener('change', syncCustomPaperSizeVisibility);
+                syncCustomMarginVisibility();
+                marginPresetField.addEventListener('change', syncCustomMarginVisibility);
+            }
         }());
     </script>
 </body>
