@@ -28,6 +28,9 @@ if (! is_array($globalErrors)) {
 }
 
 $paperSizeErrors = $fieldErrors($errors, 'paper_size');
+$customWidthErrors = $fieldErrors($errors, 'custom_width');
+$customHeightErrors = $fieldErrors($errors, 'custom_height');
+$customSizeErrors = $fieldErrors($errors, 'custom_size');
 $imageDirectoryErrors = $fieldErrors($errors, 'image_directory');
 ?>
 <!DOCTYPE html>
@@ -137,6 +140,12 @@ $imageDirectoryErrors = $fieldErrors($errors, 'image_directory');
             gap: var(--space-2);
         }
 
+        .field-grid {
+            display: grid;
+            gap: var(--space-4);
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
         .field label {
             font-weight: 600;
             font-size: 1rem;
@@ -195,6 +204,10 @@ $imageDirectoryErrors = $fieldErrors($errors, 'image_directory');
             .panel__body {
                 padding: var(--space-5);
             }
+
+            .field-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
@@ -236,6 +249,60 @@ $imageDirectoryErrors = $fieldErrors($errors, 'image_directory');
                             </div>
                         <?php endif; ?>
                     </div>
+
+                    <div class="field-grid">
+                        <div class="field <?= $customWidthErrors !== [] ? 'field--error' : '' ?>">
+                            <label for="custom_width">Custom width (cm)</label>
+                            <input
+                                id="custom_width"
+                                name="custom_width"
+                                type="number"
+                                value="<?= $escape((string) $values['custom_width']) ?>"
+                                inputmode="decimal"
+                                min="0.01"
+                                step="0.01"
+                                aria-describedby="custom-width-hint<?= $customWidthErrors !== [] ? ' custom-width-error' : '' ?>"
+                            >
+                            <p class="field__hint" id="custom-width-hint">Used only for Custom size. Enter the paper width in centimeters.</p>
+                            <?php if ($customWidthErrors !== []) : ?>
+                                <div class="field__error" id="custom-width-error">
+                                    <?php foreach ($customWidthErrors as $message) : ?>
+                                        <div><?= $escape($message) ?></div>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+
+                        <div class="field <?= $customHeightErrors !== [] ? 'field--error' : '' ?>">
+                            <label for="custom_height">Custom height (cm)</label>
+                            <input
+                                id="custom_height"
+                                name="custom_height"
+                                type="number"
+                                value="<?= $escape((string) $values['custom_height']) ?>"
+                                inputmode="decimal"
+                                min="0.01"
+                                step="0.01"
+                                aria-describedby="custom-height-hint<?= $customHeightErrors !== [] ? ' custom-height-error' : '' ?>"
+                            >
+                            <p class="field__hint" id="custom-height-hint">Used only for Custom size. Enter the paper height in centimeters.</p>
+                            <?php if ($customHeightErrors !== []) : ?>
+                                <div class="field__error" id="custom-height-error">
+                                    <?php foreach ($customHeightErrors as $message) : ?>
+                                        <div><?= $escape($message) ?></div>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+
+                    <?php if ($customSizeErrors !== []) : ?>
+                        <div class="field__error" id="custom-size-error">
+                            <?php foreach ($customSizeErrors as $message) : ?>
+                                <div><?= $escape($message) ?></div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
 
                     <div class="field <?= $imageDirectoryErrors !== [] ? 'field--error' : '' ?>">
                         <label for="image_directory">Image directory path</label>

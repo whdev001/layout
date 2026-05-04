@@ -6,10 +6,13 @@ namespace Layout;
 
 final class PaperSizes
 {
+    private const CUSTOM = 'CUSTOM';
+
     private const OPTIONS = [
         'A4' => 'A4',
         'LETTER' => 'Letter',
         'LEGAL' => 'Legal',
+        self::CUSTOM => 'Custom',
     ];
 
     public static function default(): string
@@ -34,5 +37,10 @@ final class PaperSizes
         }
 
         return self::OPTIONS[$normalized] ?? null;
+    }
+
+    public static function isCustom(string $paperSize): bool
+    {
+        return strtoupper(trim($paperSize)) === self::CUSTOM;
     }
 }
