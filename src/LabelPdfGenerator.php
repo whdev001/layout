@@ -12,14 +12,14 @@ final class LabelPdfGenerator
     public const MARGIN_PRESET_NORMAL = 'normal';
     public const MARGIN_PRESET_CENTERED = 'centered';
     public const MARGIN_PRESET_CUSTOM = 'custom';
+    public const DEFAULT_OBJECT_WIDTH = 6.0;
+    public const DEFAULT_OBJECT_HEIGHT = 3.0;
 
     private const LEFT_MARGIN = 0.2;
     private const TOP_MARGIN = 0.3;
     private const RIGHT_MARGIN = 0.1;
     private const BOTTOM_MARGIN = 0.0;
     private const BORDER_WIDTH = 0.1;
-    private const LABEL_WIDTH = 6.0;
-    private const LABEL_HEIGHT = 3.0;
     private const COLUMNS = 4;
     private const ROWS = 6;
     private const LABELS_PER_PAGE = 24;
@@ -29,8 +29,8 @@ final class LabelPdfGenerator
         'LEGAL' => [21.59, 35.56],
     ];
 
-    public const MINIMUM_PAPER_WIDTH = self::LEFT_MARGIN + (self::COLUMNS * self::LABEL_WIDTH) + self::RIGHT_MARGIN;
-    public const MINIMUM_PAPER_HEIGHT = self::TOP_MARGIN + (self::ROWS * self::LABEL_HEIGHT) + self::BOTTOM_MARGIN;
+    public const MINIMUM_PAPER_WIDTH = self::LEFT_MARGIN + (self::COLUMNS * self::DEFAULT_OBJECT_WIDTH) + self::RIGHT_MARGIN;
+    public const MINIMUM_PAPER_HEIGHT = self::TOP_MARGIN + (self::ROWS * self::DEFAULT_OBJECT_HEIGHT) + self::BOTTOM_MARGIN;
 
     public static function normalizeOrientation(string $orientation): ?string
     {
@@ -102,30 +102,32 @@ final class LabelPdfGenerator
         return self::normalizeMarginPreset($marginPreset) === self::MARGIN_PRESET_CENTERED;
     }
 
-    public static function gridWidth(float $horizontalGap = 0.0): float
+    public static function gridWidth(float $objectWidth = self::DEFAULT_OBJECT_WIDTH, float $horizontalGap = 0.0): float
     {
-        return (self::COLUMNS * self::LABEL_WIDTH) + ((self::COLUMNS - 1) * $horizontalGap);
+        return (self::COLUMNS * $objectWidth) + ((self::COLUMNS - 1) * $horizontalGap);
     }
 
-    public static function gridHeight(float $verticalGap = 0.0): float
+    public static function gridHeight(float $objectHeight = self::DEFAULT_OBJECT_HEIGHT, float $verticalGap = 0.0): float
     {
-        return (self::ROWS * self::LABEL_HEIGHT) + ((self::ROWS - 1) * $verticalGap);
+        return (self::ROWS * $objectHeight) + ((self::ROWS - 1) * $verticalGap);
     }
 
     public static function minimumPaperWidth(
+        float $objectWidth = self::DEFAULT_OBJECT_WIDTH,
         float $horizontalGap = 0.0,
         float $leftMargin = self::LEFT_MARGIN,
         float $rightMargin = self::RIGHT_MARGIN
     ): float {
-        return $leftMargin + self::gridWidth($horizontalGap) + $rightMargin;
+        return $leftMargin + self::gridWidth($objectWidth, $horizontalGap) + $rightMargin;
     }
 
     public static function minimumPaperHeight(
+        float $objectHeight = self::DEFAULT_OBJECT_HEIGHT,
         float $verticalGap = 0.0,
         float $topMargin = self::TOP_MARGIN,
         float $bottomMargin = self::BOTTOM_MARGIN
     ): float {
-        return $topMargin + self::gridHeight($verticalGap) + $bottomMargin;
+        return $topMargin + self::gridHeight($objectHeight, $verticalGap) + $bottomMargin;
     }
 
     /**
@@ -191,6 +193,8 @@ final class LabelPdfGenerator
         \FPDF $pdf,
         array $margins,
         bool $centeredPlacement,
+        float $objectWidth,
+        float $objectHeight,
         float $horizontalGap,
         float $verticalGap
     ): array {
@@ -203,8 +207,8 @@ final class LabelPdfGenerator
 
         $printableWidth = $pdf->GetPageWidth() - $margins['left'] - $margins['right'];
         $printableHeight = $pdf->GetPageHeight() - $margins['top'] - $margins['bottom'];
-        $remainingWidth = $printableWidth - self::gridWidth($horizontalGap);
-        $remainingHeight = $printableHeight - self::gridHeight($verticalGap);
+        $remainingWidth = $printableWidth - self::gridWidth($objectWidth, $horizontalGap);
+        $remainingHeight = $printableHeight - self::gridHeight($objectHeight, $verticalGap);
 
         return [
             $margins['left'] + max(0.0, $remainingWidth / 2),
@@ -220,6 +224,8 @@ final class LabelPdfGenerator
         array $imagePaths,
         string|array $paperSize,
         string $fileName,
+        float $objectWidth = self::DEFAULT_OBJECT_WIDTH,
+        float $objectHeight = self::DEFAULT_OBJECT_HEIGHT,
         float $horizontalGap = 0.0,
         float $verticalGap = 0.0,
         string $orientation = self::ORIENTATION_LANDSCAPE,
@@ -247,6 +253,8 @@ final class LabelPdfGenerator
                     $pdf,
                     $resolvedMargins,
                     $centeredPlacement,
+                    $objectWidth,
+                    $objectHeight,
                     $horizontalGap,
                     $verticalGap
                 );
@@ -255,16 +263,16 @@ final class LabelPdfGenerator
             $slot = $index % self::LABELS_PER_PAGE;
             $column = $slot % self::COLUMNS;
             $row = intdiv($slot, self::COLUMNS);
-            $x = $startX + ($column * (self::LABEL_WIDTH + $horizontalGap));
-            $y = $startY + ($row * (self::LABEL_HEIGHT + $verticalGap));
+            $x = $startX + ($column * ($objectWidth + $horizontalGap));
+            $y = $startY + ($row * ($objectHeight + $verticalGap));
 
-            $pdf->Rect($x, $y, self::LABEL_WIDTH, self::LABEL_HEIGHT);
+            $pdf->Rect($x, $y, $objectWidth, $objectHeight);
             $pdf->Image(
                 $imagePath,
                 $x + self::BORDER_WIDTH,
                 $y + self::BORDER_WIDTH,
-                self::LABEL_WIDTH - (2 * self::BORDER_WIDTH),
-                self::LABEL_HEIGHT - (2 * self::BORDER_WIDTH),
+                max(0.01, $objectWidth - (2 * self::BORDER_WIDTH)),
+                max(0.01, $objectHeight - (2 * self::BORDER_WIDTH)),
                 'PNG'
             );
         }

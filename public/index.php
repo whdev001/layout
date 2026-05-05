@@ -116,6 +116,8 @@ $values = [
     'custom_width' => '',
     'custom_height' => '',
     'image_directory' => 'Label Berlaku/',
+    'object_width' => (string) LabelPdfGenerator::DEFAULT_OBJECT_WIDTH,
+    'object_height' => (string) LabelPdfGenerator::DEFAULT_OBJECT_HEIGHT,
     'horizontal_gap' => '0',
     'vertical_gap' => '0',
 ];
@@ -132,6 +134,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         'custom_width' => trim((string) ($_POST['custom_width'] ?? '')),
         'custom_height' => trim((string) ($_POST['custom_height'] ?? '')),
         'image_directory' => trim((string) ($_POST['image_directory'] ?? '')),
+        'object_width' => trim((string) ($_POST['object_width'] ?? (string) LabelPdfGenerator::DEFAULT_OBJECT_WIDTH)),
+        'object_height' => trim((string) ($_POST['object_height'] ?? (string) LabelPdfGenerator::DEFAULT_OBJECT_HEIGHT)),
         'horizontal_gap' => trim((string) ($_POST['horizontal_gap'] ?? '')),
         'vertical_gap' => trim((string) ($_POST['vertical_gap'] ?? '')),
     ];
@@ -149,6 +153,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         $errors['orientation'][] = 'Choose portrait or landscape.';
     }
 
+    $objectWidth = $parsePositiveDimension($old['object_width'], 'object_width', $errors);
+    $objectHeight = $parsePositiveDimension($old['object_height'], 'object_height', $errors);
     $horizontalGap = $parseGapDimension($old['horizontal_gap'], 'horizontal_gap', $errors);
     $verticalGap = $parseGapDimension($old['vertical_gap'], 'vertical_gap', $errors);
 
@@ -205,15 +211,23 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         }
     }
 
-    if ($paperWidth !== null && $paperHeight !== null && $margins !== null && $horizontalGap !== null && $verticalGap !== null) {
-        $gridWidth = (4 * 6.0) + (3 * $horizontalGap);
-        $gridHeight = (6 * 3.0) + (5 * $verticalGap);
+    if (
+        $paperWidth !== null
+        && $paperHeight !== null
+        && $margins !== null
+        && $objectWidth !== null
+        && $objectHeight !== null
+        && $horizontalGap !== null
+        && $verticalGap !== null
+    ) {
+        $gridWidth = LabelPdfGenerator::gridWidth($objectWidth, $horizontalGap);
+        $gridHeight = LabelPdfGenerator::gridHeight($objectHeight, $verticalGap);
         $requiredWidth = $margins['left'] + $gridWidth + $margins['right'];
         $requiredHeight = $margins['top'] + $gridHeight + $margins['bottom'];
 
         if ($paperWidth < $requiredWidth || $paperHeight < $requiredHeight) {
             $errors['form'][] = sprintf(
-                'The selected paper, orientation, margins, and gaps need at least %s cm × %s cm of page space for the current 4 × 6 label layout.',
+                'The selected paper, orientation, margins, gaps, and object size need at least %s cm × %s cm of page space for the current 4 × 6 layout.',
                 $formatCentimeters($requiredWidth),
                 $formatCentimeters($requiredHeight)
             );
@@ -243,6 +257,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             $imagePaths,
             $paperSize,
             $downloadName,
+            $objectWidth ?? LabelPdfGenerator::DEFAULT_OBJECT_WIDTH,
+            $objectHeight ?? LabelPdfGenerator::DEFAULT_OBJECT_HEIGHT,
             $horizontalGap ?? 0.0,
             $verticalGap ?? 0.0,
             $orientation ?? 'L',
